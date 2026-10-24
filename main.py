@@ -7,14 +7,16 @@ import os
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# TERA LOGS ME YE PATH DIKHA HAI, ISKO DIRECT DAAL RAHE HAIN
+CHROME_PATH = "/opt/render/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell"
+
 @app.get("/download")
 async def download_file(url: str = Query(...)):
     try:
         async with async_playwright() as p:
-            # Path force nahi kar rahe, Playwright khud dhundhega
-            # Memory bachane ke liye args lagaye hain
             browser = await p.chromium.launch(
                 headless=True,
+                executable_path=CHROME_PATH,  # FORCE PATH
                 args=[
                     "--no-sandbox", 
                     "--disable-dev-shm-usage", 
