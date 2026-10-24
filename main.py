@@ -10,30 +10,25 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 async def download_file(url: str = Query(...)):
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            # Memory bachane ke liye extra arguments
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+            )
             page = await browser.new_page()
-            await page.goto(url, wait_until="networkidle")
+            await page.goto(url, wait_until="domcontentloaded")
             
-            # Terabox page load hone ka wait
+            # Page load hone ka wait
             await page.wait_for_timeout(3000)
             
-            # Page se dlink nikalna
             dlink = await page.evaluate("() => window.__INITIAL_STATE__?.file?.file_info?.dlink")
             
-            if not dlink:
-                # agar state na mile toh HTML se dhundhna
-                content = await page.content()
-                import re
-                match = re.search(r'"dlink":"(https:\\/\\/[^"]+)"', content)
-                if match:
-                    dlink = match.group(1).replace('\\/', '/')
-
             await browser.close()
 
             if dlink:
                 return RedirectResponse(url=dlink)
             else:
-                raise ValueError("Link nahi mila, terabox block kar raha hai.")
+                raise ValueError("Link nahi mila.")
                 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
