@@ -11,10 +11,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 async def download_file(url: str = Query(...)):
     try:
         async with async_playwright() as p:
-            # Force playwright to find the browser in Render's cache directory
+            # Path force nahi kar rahe, Playwright khud dhundhega
+            # Memory bachane ke liye args lagaye hain
             browser = await p.chromium.launch(
                 headless=True,
-                executable_path="/opt/render/.cache/ms-playwright/chromium-1248/chrome-linux/chrome",
                 args=[
                     "--no-sandbox", 
                     "--disable-dev-shm-usage", 
@@ -25,7 +25,7 @@ async def download_file(url: str = Query(...)):
             page = await browser.new_page()
             await page.goto(url, wait_until="domcontentloaded")
             
-            await page.wait_for_timeout(3000)
+            await page.wait_for_timeout(4000)
             
             dlink = await page.evaluate("() => window.__INITIAL_STATE__?.file?.file_info?.dlink")
             
