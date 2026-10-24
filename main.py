@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-from playwright.async_api import async_playwright
+import httpx
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -9,36 +9,24 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 @app.get("/download")
 async def download_file(url: str = Query(...)):
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox", 
-                    "--disable-dev-shm-usage", 
-                    "--disable-gpu",
-                    "--single-process"
-                ]
-            )
-            page = await browser.new_page()
-            await page.goto(url, wait_until="domcontentloaded")
-            
-            await page.wait_for_timeout(3000)
-            
-            dlink = await page.evaluate("() => window.__INITIAL_STATE__?.file?.file_info?.dlink")
-            
-            if not dlink:
-                content = await page.content()
-                import re
-                match = re.search(r'"dlink":"(https:\\/\\/[^"]+)"', content)
-                if match:
-                    dlink = match.group(1).replace('\\/', '/')
+        # Terabox ka internal API call
+        share_url = url.split('s/')[-1].split('?')[0]
+        api_url = f"https://www.terabox.com/share/list?shorturl={share_url}&root=1"
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Referer": "https://www.terabox.com/"
+        }
 
-            await browser.close()
+        async with httpx.AsyncClient() as client:
+            res = await client.get(api_url, headers=headers)
+            data = res.json()
 
-            if dlink:
-                return RedirectResponse(url=dlink)
-            else:
-                raise ValueError("Link nahi mila. Terabox ne block kiya.")
-                
+            if data.get("errno") == 0 and data.get("list"):
+                dlink = data["list"][0].get("dlink")
+                if dlink:
+                    return RedirectResponse(url=dlink)
+            
+            raise ValueError("Link nahi mila. Terabox API ne reject kiya.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
