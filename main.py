@@ -2,13 +2,9 @@ from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
-import os
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-# TERA LOGS ME YE PATH DIKHA HAI, ISKO DIRECT DAAL RAHE HAIN
-CHROME_PATH = "/opt/render/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell"
 
 @app.get("/download")
 async def download_file(url: str = Query(...)):
@@ -16,7 +12,6 @@ async def download_file(url: str = Query(...)):
         async with async_playwright() as p:
             browser = await p.chromium.launch(
                 headless=True,
-                executable_path=CHROME_PATH,  # FORCE PATH
                 args=[
                     "--no-sandbox", 
                     "--disable-dev-shm-usage", 
@@ -27,7 +22,7 @@ async def download_file(url: str = Query(...)):
             page = await browser.new_page()
             await page.goto(url, wait_until="domcontentloaded")
             
-            await page.wait_for_timeout(4000)
+            await page.wait_for_timeout(3000)
             
             dlink = await page.evaluate("() => window.__INITIAL_STATE__?.file?.file_info?.dlink")
             
@@ -43,7 +38,7 @@ async def download_file(url: str = Query(...)):
             if dlink:
                 return RedirectResponse(url=dlink)
             else:
-                raise ValueError("Link nahi mila. Terabox ne block kiya ya file delete ho gayi.")
+                raise ValueError("Link nahi mila. Terabox ne block kiya.")
                 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
